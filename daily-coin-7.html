@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Coin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<script>
+// Generate pie-slice coin favicon at startup
+(function(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 192;
+  const ctx = c.getContext('2d');
+  const cx = 96, cy = 96, r = 90;
+  const tiers = [
+    ['#8B5E3C','#5C3A1E'], // עץ
+    ['#CD7F32','#8B5A1A'], // ארד
+    ['#D8D8D8','#808080'], // כסף
+    ['#FFD700','#B8860B'], // זהב
+    ['#B9F2FF','#4FC3F7'], // יהלום
+    ['#39FF14','#1a7a00'], // פלוטוניום
+    ['#FF4500','#8B0000'], // אש
+  ];
+  const n = tiers.length;
+  const slice = (Math.PI * 2) / n;
+
+  // Shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 8;
+
+  tiers.forEach(([a, b], i) => {
+    const start = i * slice - Math.PI / 2;
+    const end = start + slice;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, a);
+    grad.addColorStop(1, b);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, end);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+  });
+
+  ctx.shadowBlur = 0;
+
+  // Divider lines between slices
+  tiers.forEach((_, i) => {
+    const angle = i * slice - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  });
+
+  // Outer ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = '#FFD700';
+  ctx.lineWidth = 5;
+  ctx.stroke();
+
+  // Inner circle (center dot)
+  ctx.beginPath();
+  ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1208';
+  ctx.fill();
+  ctx.strokeStyle = '#FFD700';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Set as favicon
+  const link = document.createElement('link');
+  link.rel = 'icon';
+  link.type = 'image/png';
+  link.href = c.toDataURL('image/png');
+  document.head.appendChild(link);
+
+  // Also set apple-touch-icon for home screen
+  const apple = document.createElement('link');
+  apple.rel = 'apple-touch-icon';
+  apple.href = c.toDataURL('image/png');
+  document.head.appendChild(apple);
+})();
+</script>
+<style>
+  :root {
+    --bg: #0a0806;
+    --tier-wood-a: #8B5E3C;
+    --tier-wood-b: #5C3A1E;
+    --tier-bronze-a: #CD7F32;
+    --tier-bronze-b: #8B5A1A;
+    --tier-silver-a: #C0C0C0;
+    --tier-silver-b: #808080;
+    --tier-gold-a: #FFD700;
+    --tier-gold-b: #B8860B;
+    --tier-diamond-a: #B9F2FF;
+    --tier-diamond-b: #4FC3F7;
+    --tier-plutonium-a: #39FF14;
+    --tier-plutonium-b: #006400;
+    --tier-fire-a: #FF4500;
+    --tier-fire-b: #8B0000;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: #f0e6d3;
+    font-family: 'Crimson Text', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  /* Starfield */
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .star {
+    position: absolute;
+    border-radius: 50%;
+    background: white;
+    animation: twinkle var(--d, 3s) ease-in-out infinite alternate;
+    opacity: var(--o, 0.5);
+  }
+  @keyframes twinkle {
+    from { opacity: var(--o, 0.2); transform: scale(1); }
+    to   { opacity: calc(var(--o, 0.2) * 0.3); transform: scale(0.6); }
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 16px 30px;
+  }
+
+  /* Header date */
+  .date-section {
+    width: 100%;
+    text-align: center;
+    padding: 18px 0 10px;
+  }
+  .date-label {
+    font-family: 'Cinzel', serif;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #8a7a6a;
+    margin-bottom: 4px;
+  }
+  .date-value {
+    font-family: 'Cinzel', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #f0e6d3;
+    letter-spacing: 2px;
+  }
+  .day-name {
+    font-family: 'Crimson Text', serif;
+    font-style: italic;
+    font-size: 15px;
+    color: #9a8a7a;
+    margin-top: 2px;
+  }
+
+  /* Divider */
+  .divider {
+    width: 80%;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #5a4a3a, transparent);
+    margin: 12px 0;
+  }
+
+  /* COIN SECTION — top third */
+  .coin-section {
+    width: 100%;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0 20px;
+    min-height: 33vh;
+  }
+
+  .tier-label {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    transition: color 0.8s;
+  }
+
+  /* 3D Coin */
+  .scene {
+    width: 200px;
+    height: 200px;
+    perspective: 600px;
+    margin-bottom: 18px;
+  }
+  .coin {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: spin 5s linear infinite;
+    filter: drop-shadow(0 0 30px var(--coin-glow, #FFD70080));
+    transition: filter 0.8s;
+  }
+  @keyframes spin {
+    0%   { transform: rotateY(0deg); }
+    100% { transform: rotateY(360deg); }
+  }
+
+  .coin-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backface-visibility: hidden;
+  }
+  .coin-face canvas {
+    border-radius: 50%;
+    width: 200px;
+    height: 200px;
+  }
+  /* Push faces out by half the thickness (40px total thickness) */
+  .coin-front {
+    transform: translateZ(20px);
+  }
+  .coin-back {
+    transform: rotateY(180deg) translateZ(20px);
+  }
+
+  /* Edge ring — single element, visible when coin is sideways */
+  .coin-edge-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    transform-style: preserve-3d;
+  }
+
+  /* Roman numeral */
+  .roman-text {
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    font-size: 46px;
+    position: absolute;
+    color: rgba(255,255,255,0.92);
+    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Stats below coin */
+  .coin-stats {
+    display: flex;
+    gap: 24px;
+    margin-top: 4px;
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat-num {
+    font-family: 'Cinzel', serif;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: #8a7a6a;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* Progress to next tier */
+  .progress-section {
+    width: 90%;
+    margin: 0 auto;
+  }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #8a7a6a;
+    margin-bottom: 6px;
+    font-family: 'Cinzel', serif;
+  }
+  .progress-bar-wrap {
+    width: 100%;
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease, background 0.8s;
+  }
+
+  /* Tier badges */
+  .tiers-section {
+    width: 100%;
+    flex: 1;
+    padding: 20px 0 0;
+  }
+  .tiers-title {
+    font-family: 'Cinzel', serif;
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: #5a4a3a;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .tiers-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+  .tier-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.02);
+    opacity: 0.35;
+    transition: opacity 0.5s, border-color 0.5s, transform 0.3s;
+    cursor: default;
+  }
+  .tier-badge.active {
+    opacity: 1;
+    border-color: rgba(255,255,255,0.25);
+    transform: scale(1.05);
+  }
+  .tier-badge.unlocked {
+    opacity: 0.7;
+  }
+  .tier-badge-icon {
+    font-size: 22px;
+  }
+  .tier-badge-name {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .tier-badge-day {
+    font-size: 10px;
+    color: #6a5a4a;
+  }
+
+  /* Particle burst */
+  .particle {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 999;
+    animation: particleFly var(--dur, 1.2s) ease-out forwards;
+  }
+  @keyframes particleFly {
+    0%   { opacity: 1; transform: translate(0,0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--tx, 0px), var(--ty, -120px)) scale(0.2); }
+  }
+
+  .upgrade-flash {
+    position: fixed;
+    inset: 0;
+    z-index: 900;
+    pointer-events: none;
+    animation: flashIn 0.6s ease-out forwards;
+  }
+  @keyframes flashIn {
+    0%   { opacity: 0.7; }
+    100% { opacity: 0; }
+  }
+
+  /* Radioactive glow for plutonium */
+  .radioactive-pulse {
+    animation: spin 4s linear infinite, radioPulse 1.5s ease-in-out infinite alternate;
+  }
+  @keyframes radioPulse {
+    from { filter: drop-shadow(0 0 20px #39FF1480) drop-shadow(0 0 50px #39FF1430); }
+    to   { filter: drop-shadow(0 0 50px #39FF14cc) drop-shadow(0 0 100px #39FF1460); }
+  }
+  .fire-pulse {
+    animation: spin 4s linear infinite, firePulse 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes firePulse {
+    from { filter: drop-shadow(0 0 30px #FF450080) drop-shadow(0 0 60px #FF000040); }
+    to   { filter: drop-shadow(0 0 70px #FF4500dd) drop-shadow(0 0 120px #FF000060); }
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<div class="app">
+  <div class="date-section">
+    <div class="date-label">היום</div>
+    <div class="date-value" id="dateValue">—</div>
+    <div class="day-name" id="dayName">—</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="coin-section">
+    <div class="tier-label" id="tierLabel">—</div>
+
+    <div class="scene">
+      <div class="coin" id="coin">
+        <div class="coin-face coin-front">
+          <canvas id="frontCanvas" width="200" height="200"></canvas>
+          <div class="roman-text" id="romanFront"></div>
+        </div>
+        <div class="coin-face coin-back">
+          <canvas id="backCanvas" width="200" height="200"></canvas>
+          <div class="roman-text" id="romanBack" style="transform:rotateY(180deg)"></div>
+        </div>
+        <canvas id="edgeCanvas" style="position:absolute;inset:0;width:200px;height:200px;border-radius:50%;pointer-events:none;"></canvas>
+      </div>
+    </div>
+
+    <div class="coin-stats">
+      <div class="stat">
+        <div class="stat-num" id="dayNum">—</div>
+        <div class="stat-label">יום</div>
+      </div>
+      <div class="stat" style="border-right:1px solid #3a2a1a; border-left:1px solid #3a2a1a; padding:0 24px;">
+        <div class="stat-num" id="streakNum">—</div>
+        <div class="stat-label">רצף</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="totalNum">—</div>
+        <div class="stat-label">מטבע</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="progress-section">
+    <div class="progress-header">
+      <span id="progressCurrent">—</span>
+      <span id="progressNext">הדרגה הבאה</span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="tiers-section">
+    <div class="tiers-title">מסלול הדרגות</div>
+    <div class="tiers-grid" id="tiersGrid"></div>
+  </div>
+
+  <button onclick="if(confirm('לאפס ולהתחיל מחדש מהיום?')){localStorage.clear();const today=new Date();today.setHours(0,0,0,0);localStorage.setItem('coinStartDate',today.toISOString().split('T')[0]);location.reload();}" style="
+    margin-top:24px;
+    background:transparent;
+    border:1px solid #3a2a1a;
+    color:#4a3a2a;
+    font-family:'Cinzel',serif;
+    font-size:10px;
+    letter-spacing:3px;
+    padding:8px 20px;
+    border-radius:20px;
+    cursor:pointer;
+  ">אפס מסע</button>
+</div>
+
+<script>
+// ── TIER DEFINITIONS ───────────────────────────────────────────────
+// Milestones (coin count when tier unlocks):
+// Wood=1, Bronze=3, Silver=6, Gold=9, Diamond=12, Plutonium=18, Fire=27
+const TIERS = [
+  {
+    id: 'wood',
+    name: 'עץ',
+    icon: '🪵',
+    from: 1,
+    colorA: '#8B5E3C',
+    colorB: '#5C3A1E',
+    glow: '#8B5E3C80',
+    textColor: '#f0dcc0',
+    woodGrain: true,
+  },
+  {
+    id: 'bronze',
+    name: 'ארד',
+    icon: '🥉',
+    from: 3,
+    colorA: '#CD7F32',
+    colorB: '#8B5A1A',
+    glow: '#CD7F3280',
+    textColor: '#fff0d0',
+  },
+  {
+    id: 'silver',
+    name: 'כסף',
+    icon: '🥈',
+    from: 6,
+    colorA: '#D8D8D8',
+    colorB: '#808080',
+    glow: '#C0C0C080',
+    textColor: '#ffffff',
+  },
+  {
+    id: 'gold',
+    name: 'זהב',
+    icon: '🥇',
+    from: 9,
+    colorA: '#FFD700',
+    colorB: '#B8860B',
+    glow: '#FFD70099',
+    textColor: '#3a2a00',
+  },
+  {
+    id: 'diamond',
+    name: 'יהלום',
+    icon: '💎',
+    from: 12,
+    colorA: '#B9F2FF',
+    colorB: '#4FC3F7',
+    glow: '#B9F2FF99',
+    textColor: '#003040',
+  },
+  {
+    id: 'plutonium',
+    name: 'פלוטוניום',
+    icon: '☢️',
+    from: 18,
+    colorA: '#39FF14',
+    colorB: '#1a7a00',
+    glow: '#39FF1499',
+    textColor: '#001a00',
+    radioactive: true,
+  },
+  {
+    id: 'fire',
+    name: 'אש',
+    icon: '🔥',
+    from: 27,
+    colorA: '#FF4500',
+    colorB: '#8B0000',
+    glow: '#FF450099',
+    textColor: '#fff0e0',
+    fire: true,
+  },
+];
+
+// Roman numerals
+function toRoman(n) {
+  if (n <= 0) return '';
+  const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1];
+  const syms = ['M','CM','D','CD','C','XC','L','XL','X','IX','V','IV','I'];
+  let result = '';
+  for (let i = 0; i < vals.length; i++) {
+    while (n >= vals[i]) { result += syms[i]; n -= vals[i]; }
+  }
+  return result;
+}
+
+// Hebrew days
+const HEB_DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+const HEB_MONTHS = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+
+// ── STATE ──────────────────────────────────────────────────────────
+// Start date = tomorrow from "app start" = today + 1
+// But if user already has stored start date, use that.
+function getStartDate() {
+  let stored = localStorage.getItem('coinStartDate');
+  if (!stored) {
+    // App first open: day 1 = TODAY (so tomorrow = day 2)
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    stored = today.toISOString().split('T')[0];
+    localStorage.setItem('coinStartDate', stored);
+  }
+  return new Date(stored + 'T00:00:00');
+}
+
+function getDaysSince(startDate) {
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const diff = now - startDate;
+  return Math.max(0, Math.floor(diff / 86400000));
+}
+
+function getTierForDay(day) {
+  // day is 0-indexed days since start; coin number = day + 1 (starts at 1)
+  // Actually coin increments each day; on day 0 coin=1, day 1 coin=2 etc.
+  // But if today < startDate, we show "day 0" / no coin yet
+  const coin = day + 1;
+  let current = TIERS[0];
+  for (let t of TIERS) {
+    if (coin >= t.from) current = t;
+    else break;
+  }
+  return current;
+}
+
+// ── CANVAS DRAWING ─────────────────────────────────────────────────
+function drawCoinFace(canvas, tier, coinNum, isFront) {
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  const cx = w/2, cy = h/2, r = w/2 - 4;
+  ctx.clearRect(0,0,w,h);
+
+  // Base gradient
+  const grad = ctx.createRadialGradient(cx-r*0.3, cy-r*0.3, r*0.05, cx, cy, r);
+  grad.addColorStop(0, tier.colorA);
+  grad.addColorStop(0.5, tier.colorB);
+  grad.addColorStop(1, shadeColor(tier.colorB, -40));
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Wood grain
+  if (tier.woodGrain) {
+    ctx.save();
+    ctx.clip();
+    for (let i = -w; i < w*2; i += 12) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i + h * 0.3, h);
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+    }
+    // rings
+    for (let ri = 20; ri < r; ri += 18) {
+      ctx.beginPath();
+      ctx.arc(cx + Math.sin(ri)*6, cy + Math.cos(ri)*4, ri, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Radioactive pattern
+  if (tier.radioactive) {
+    ctx.save();
+    ctx.clip();
+    // glow aura
+    const rGrad = ctx.createRadialGradient(cx,cy,r*0.1,cx,cy,r);
+    rGrad.addColorStop(0,'rgba(57,255,20,0.4)');
+    rGrad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle = rGrad;
+    ctx.fillRect(0,0,w,h);
+    // ☢ symbol drawn manually
+    ctx.strokeStyle = 'rgba(0,40,0,0.4)';
+    ctx.lineWidth = 8;
+    for (let a = 0; a < 3; a++) {
+      ctx.save();
+      ctx.translate(cx,cy);
+      ctx.rotate(a * Math.PI*2/3 + Math.PI/6);
+      ctx.beginPath();
+      ctx.arc(0, -r*0.4, r*0.2, 0, Math.PI);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // Fire pattern
+  if (tier.fire) {
+    ctx.save();
+    ctx.clip();
+    const fg = ctx.createRadialGradient(cx,cy+r*0.2,r*0.05,cx,cy,r);
+    fg.addColorStop(0,'rgba(255,255,100,0.5)');
+    fg.addColorStop(0.4,'rgba(255,100,0,0.35)');
+    fg.addColorStop(1,'rgba(100,0,0,0.2)');
+    ctx.fillStyle = fg;
+    ctx.fillRect(0,0,w,h);
+    ctx.restore();
+  }
+
+  // Thick edge ring (simulates coin depth seen from slight angle)
+  const edgeGrad = ctx.createLinearGradient(0, cy-r, 0, cy+r);
+  edgeGrad.addColorStop(0, lightenColor(tier.colorA, 50));
+  edgeGrad.addColorStop(0.3, tier.colorA);
+  edgeGrad.addColorStop(0.7, tier.colorB);
+  edgeGrad.addColorStop(1, shadeColor(tier.colorB, -30));
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.strokeStyle = edgeGrad;
+  ctx.lineWidth = 12;
+  ctx.stroke();
+
+  // Outer highlight line
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 1, 0, Math.PI*2);
+  ctx.strokeStyle = lightenColor(tier.colorA, 60) + '99';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Inner ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 10, 0, Math.PI*2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Shine
+  const shineGrad = ctx.createLinearGradient(cx-r, cy-r, cx+r*0.5, cy+r*0.3);
+  shineGrad.addColorStop(0, 'rgba(255,255,255,0.22)');
+  shineGrad.addColorStop(0.5, 'rgba(255,255,255,0.04)');
+  shineGrad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.fillStyle = shineGrad;
+  ctx.fill();
+
+  // Tier icon on back face
+  if (!isFront) {
+    ctx.font = `${r*0.55}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = 0.6;
+    ctx.fillText(tier.icon.replace(/[\uFE0F]/g,''), cx, cy+2);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function shadeColor(col, pct) {
+  let r = parseInt(col.slice(1,3),16);
+  let g = parseInt(col.slice(3,5),16);
+  let b = parseInt(col.slice(5,7),16);
+  r = Math.max(0,Math.min(255, r+pct));
+  g = Math.max(0,Math.min(255, g+pct));
+  b = Math.max(0,Math.min(255, b+pct));
+  return `rgb(${r},${g},${b})`;
+}
+function lightenColor(col, pct) { return shadeColor(col, pct); }
+
+// ── UI UPDATE ──────────────────────────────────────────────────────
+let prevTierIdx = -1;
+
+function update() {
+  const startDate = getStartDate();
+  const daysSince = getDaysSince(startDate);
+  const today = new Date();
+  document.getElementById('dateValue').textContent =
+    `${today.getDate()} ${HEB_MONTHS[today.getMonth()]} ${today.getFullYear()}`;
+  document.getElementById('dayName').textContent =
+    `יום ${HEB_DAYS[today.getDay()]}`;
+
+  const coinNum = daysSince + 1;
+
+  const tier = getTierForDay(daysSince);
+  const tierIdx = TIERS.indexOf(tier);
+
+  // Coin number
+  const roman = toRoman(coinNum);
+  document.getElementById('romanFront').textContent = roman;
+  document.getElementById('romanBack').textContent = roman;
+
+  // Stats
+  document.getElementById('dayNum').textContent = coinNum;
+  document.getElementById('streakNum').textContent = coinNum;
+  document.getElementById('totalNum').textContent = coinNum;
+
+  // Tier label
+  document.getElementById('tierLabel').textContent =
+    `${tier.icon} ${tier.name}`;
+
+  // Progress bar
+  const nextTier = TIERS[tierIdx + 1];
+  if (nextTier) {
+    const rangeStart = tier.from;
+    const rangeEnd = nextTier.from;
+    const pct = Math.round(((coinNum - rangeStart) / (rangeEnd - rangeStart)) * 100);
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressFill').style.background = `linear-gradient(to right, ${tier.colorA}, ${nextTier.colorA})`;
+    document.getElementById('progressCurrent').textContent = `${tier.icon} ${tier.name}`;
+    document.getElementById('progressNext').textContent = `${nextTier.icon} ${nextTier.name} (יום ${nextTier.from})`;
+  } else {
+    document.getElementById('progressFill').style.width = '100%';
+    document.getElementById('progressFill').style.background = `linear-gradient(to right, ${tier.colorA}, #fff)`;
+    document.getElementById('progressCurrent').textContent = `${tier.icon} ${tier.name} — הדרגה האחרונה!`;
+    document.getElementById('progressNext').textContent = '✨ MAX';
+  }
+
+  // Draw coin
+  drawCoinFace(document.getElementById('frontCanvas'), tier, coinNum, true);
+  drawCoinFace(document.getElementById('backCanvas'), tier, coinNum, false);
+  applyCoinStyle(tier);
+
+  // Tier upgrade flash
+  if (prevTierIdx >= 0 && tierIdx > prevTierIdx) {
+    triggerUpgradeEffect(tier);
+  }
+  prevTierIdx = tierIdx;
+
+  renderTiers(coinNum, tier);
+}
+
+function buildEdgeSlices(tier) {
+  // Draw edge as a proper 3D cylinder using a dedicated canvas per face approach
+  // We use multiple thin divs but rendered via canvas texture — no CSS borders
+  const container = document.getElementById('edgeCanvas');
+  if (!container) return;
+
+  // Instead of slices, we draw the edge directly on the two face canvases
+  // as a thick border — but that clips. 
+  // Best CSS-only fix: use box-shadow on the coin element itself for the edge band
+  const coin = document.getElementById('coin');
+  // Remove old edge canvas approach, use outline trick:
+  // Place a cylinder made of one rotated element
+  
+  // Clean approach: single flat div rotated 90deg on Y, sized as the circumference
+  // This is the CORRECT way — one element, no slices, no gaps
+  const edgeEl = document.getElementById('edgeCanvas');
+  edgeEl.style.cssText = `
+    position:absolute;
+    width:200px;
+    height:200px;
+    border-radius:50%;
+    pointer-events:none;
+    transform:none;
+  `;
+
+  // Draw edge ring on this canvas using 2D arc with thick stroke
+  const ctx = edgeEl.getContext('2d');
+  // This canvas lives in 3D space — we draw it normally, the 3D transform handles the rest
+  // But we need it to look like a cylinder edge when seen from the side
+  // The real solution: draw ellipse outlines on front/back face canvases
+  ctx.clearRect(0,0,200,200);
+  // We'll handle edge via the face canvases — nothing here needed
+}
+
+function applyPageTheme(tier) {
+  // Remove old scanlines/dynamic bg
+  const oldScan = document.getElementById('scanlineOverlay');
+  if (oldScan) oldScan.remove();
+  document.getElementById('stars').querySelectorAll('.float-particle').forEach(p => p.remove());
+  if (floatingInterval) { clearInterval(floatingInterval); floatingInterval = null; }
+
+  // Always tint UI elements with tier color
+  document.querySelectorAll('.divider').forEach(d => {
+    d.style.background = `linear-gradient(to right, transparent, ${tier.colorA}66, transparent)`;
+  });
+  document.getElementById('dateValue').style.color = tier.colorA;
+  document.querySelectorAll('.stat-num').forEach(el => el.style.color = tier.colorA);
+  document.querySelector('.tiers-title').style.color = tier.colorA + '99';
+
+  const tierIdx = TIERS.indexOf(tier);
+
+  if (tierIdx === 0) {
+    // עץ — רקע כהה ופשוט, ללא אפקטים
+    document.body.style.cssText = 'background:#0a0806;';
+    resetStars('white');
+    return;
+  }
+
+  if (tierIdx === 1) {
+    // ארד — רמז קל של נחושת בפינות בלבד
+    document.body.style.cssText = `background:
+      radial-gradient(ellipse at 15% 85%, ${tier.colorB}22 0%, transparent 40%),
+      radial-gradient(ellipse at 85% 15%, ${tier.colorA}14 0%, transparent 40%),
+      #0a0806;`;
+    resetStars('white');
+    return;
+  }
+
+  if (tierIdx === 2) {
+    // כסף — פסי אור כספיים + 6 ניצוצות צפים
+    document.body.style.cssText = `background:
+      radial-gradient(ellipse at 50% 0%, ${tier.colorA}28 0%, transparent 55%),
+      radial-gradient(ellipse at 0% 100%, ${tier.colorB}18 0%, transparent 45%),
+      radial-gradient(ellipse at 100% 100%, ${tier.colorA}14 0%, transparent 45%),
+      #080808;`;
+    resetStars('#C0C0C0');
+    addFloatingParticles(tier, 6, false);
+    return;
+  }
+
+  if (tierIdx === 3) {
+    // זהב — זוהר זהוב מלכותי מכל הפינות + 18 ניצוצות
+    document.body.style.cssText = `background:
+      radial-gradient(ellipse at 50% -5%, ${tier.colorA}45 0%, transparent 50%),
+      radial-gradient(ellipse at 0% 60%, ${tier.colorB}25 0%, transparent 40%),
+      radial-gradient(ellipse at 100% 60%, ${tier.colorA}20 0%, transparent 40%),
+      radial-gradient(ellipse at 50% 110%, ${tier.colorB}30 0%, transparent 50%),
+      #0a0700;`;
+    resetStars('#FFD700');
+    addFloatingParticles(tier, 18, true);
+    return;
+  }
+
+  if (tierIdx === 4) {
+    // יהלום — רקע לילה כחול עמוק + ברקים + 30 ניצוצות
+    document.body.style.cssText = `background:
+      radial-gradient(ellipse at 50% 15%, ${tier.colorA}35 0%, transparent 50%),
+      radial-gradient(ellipse at 5% 50%, ${tier.colorB}28 0%, transparent 38%),
+      radial-gradient(ellipse at 95% 50%, ${tier.colorA}22 0%, transparent 38%),
+      radial-gradient(ellipse at 50% 95%, ${tier.colorB}25 0%, transparent 48%),
+      radial-gradient(ellipse at 25% 25%, ${tier.colorA}15 0%, transparent 30%),
+      #020810;`;
+    resetStars(tier.colorA);
+    addFloatingParticles(tier, 30, true);
+    return;
+  }
+
+  if (tierIdx === 5) {
+    // פלוטוניום — ירוק רדיואקטיבי מפחיד + שכבת סקאנליינס + 40 חלקיקים
+    document.body.style.cssText = `background:
+      radial-gradient(ellipse at 50% 30%, #39FF1420 0%, transparent 55%),
+      radial-gradient(ellipse at 10% 70%, #00640030 0%, transparent 40%),
+      radial-gradient(ellipse at 90% 70%, #39FF1418 0%, transparent 40%),
+      radial-gradient(ellipse at 50% 100%, #39FF1412 0%, transparent 50%),
+      #010a01;`;
+    resetStars('#39FF14');
+    addFloatingParticles(tier, 40, true);
+    addScanlines('#39FF140c');
+    return;
+  }
+
+  if (tierIdx === 6) {
+    // אש — גיהינום בוער, אדום-כתום אינטנסיבי מלמטה + 55 גחלים + סקאנליינס
+    document.body.style.cssText = `background:
+      radial-gradient(ellipse at 50% 110%, #FF450055 0%, transparent 55%),
+      radial-gradient(ellipse at 20% 90%, #FF000040 0%, transparent 45%),
+      radial-gradient(ellipse at 80% 90%, #FF450038 0%, transparent 45%),
+      radial-gradient(ellipse at 50% 50%, #8B000022 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 10%, #FF220015 0%, transparent 40%),
+      #0d0000;`;
+    resetStars('#FF4500');
+    addFloatingParticles(tier, 55, true);
+    addScanlines('#FF45000e');
+    return;
+  }
+}
+
+function resetStars(color) {
+  document.getElementById('stars').querySelectorAll('.star').forEach(s => {
+    s.style.background = Math.random() > 0.85 ? color : 'white';
+  });
+}
+
+let floatingInterval = null;
+function addFloatingParticles(tier, count, sparkle) {
+  if (floatingInterval) clearInterval(floatingInterval);
+  const container = document.getElementById('stars');
+  // Remove old floating particles
+  container.querySelectorAll('.float-particle').forEach(p => p.remove());
+
+  function spawnOne() {
+    const p = document.createElement('div');
+    p.className = 'float-particle';
+    const size = sparkle ? (1 + Math.random() * 3) : (2 + Math.random() * 4);
+    const x = Math.random() * 100;
+    const duration = 4 + Math.random() * 6;
+    const delay = Math.random() * 3;
+    p.style.cssText = `
+      position:absolute;
+      width:${size}px; height:${size}px;
+      left:${x}%;
+      bottom:-10px;
+      border-radius:50%;
+      background:${Math.random() > 0.5 ? tier.colorA : tier.colorB};
+      opacity:0;
+      pointer-events:none;
+      animation: floatUp ${duration}s ${delay}s ease-in forwards;
+      ${sparkle ? `box-shadow:0 0 ${size*2}px ${tier.colorA};` : ''}
+    `;
+    container.appendChild(p);
+    setTimeout(() => p.remove(), (duration + delay) * 1000);
+  }
+
+  // Add CSS for floatUp if not already there
+  if (!document.getElementById('floatStyle')) {
+    const style = document.createElement('style');
+    style.id = 'floatStyle';
+    style.textContent = `
+      @keyframes floatUp {
+        0%   { opacity:0; transform:translateY(0) scale(1); }
+        10%  { opacity:0.8; }
+        90%  { opacity:0.4; }
+        100% { opacity:0; transform:translateY(-100vh) scale(0.3); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  for (let i = 0; i < count; i++) spawnOne();
+  floatingInterval = setInterval(() => spawnOne(), 800);
+}
+
+function addScanlines(color) {
+  let el = document.getElementById('scanlines');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'scanlines';
+    el.style.cssText = `
+      position:fixed; inset:0; pointer-events:none; z-index:0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 3px,
+        ${color} 3px, ${color} 4px
+      );
+    `;
+    document.body.appendChild(el);
+  } else {
+    el.style.background = `repeating-linear-gradient(0deg, transparent, transparent 3px, ${color} 3px, ${color} 4px)`;
+  }
+}
+
+function blendWithBrightness(dark, light, t) {
+  const d = hexToRgb(dark) || {r:80,g:60,b:30};
+  const l = hexToRgb(light) || {r:180,g:140,b:60};
+  const r = Math.round(d.r + (l.r - d.r) * t);
+  const g = Math.round(d.g + (l.g - d.g) * t);
+  const b = Math.round(d.b + (l.b - d.b) * t);
+  return `rgb(${r},${g},${b})`;
+}
+
+function hexToRgb(hex) {
+  if (!hex || hex[0] !== '#') return null;
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return {r,g,b};
+}
+
+function applyCoinStyle(tier) {
+  buildEdgeSlices(tier);
+  applyPageTheme(tier);
+  const coin = document.getElementById('coin');
+  coin.className = 'coin';
+  if (tier.radioactive) coin.classList.add('radioactive-pulse');
+  else if (tier.fire) coin.classList.add('fire-pulse');
+  else {
+    coin.style.filter = `drop-shadow(0 0 30px ${tier.glow})`;
+  }
+
+  // Roman numeral color
+  document.getElementById('romanFront').style.color = tier.textColor;
+  document.getElementById('romanBack').style.color = tier.textColor;
+  document.getElementById('tierLabel').style.color = tier.colorA;
+}
+
+function renderTiers(coinNum, activeTier) {
+  const grid = document.getElementById('tiersGrid');
+  grid.innerHTML = '';
+  TIERS.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'tier-badge';
+    const isActive = t.id === activeTier.id;
+    const isUnlocked = coinNum >= t.from;
+    if (isActive) div.classList.add('active');
+    else if (isUnlocked) div.classList.add('unlocked');
+
+    if (isActive) {
+      div.style.background = `linear-gradient(135deg, ${t.colorB}40, ${t.colorA}20)`;
+      div.style.borderColor = t.colorA + '88';
+      div.style.boxShadow = `0 0 16px ${t.glow}`;
+    }
+
+    div.innerHTML = `
+      <div class="tier-badge-icon">${t.icon}</div>
+      <div class="tier-badge-name" style="color:${isActive ? t.colorA : '#6a5a4a'}">${t.name}</div>
+      <div class="tier-badge-day">יום ${t.from}</div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function triggerUpgradeEffect(tier) {
+  // Flash
+  const flash = document.createElement('div');
+  flash.className = 'upgrade-flash';
+  flash.style.background = tier.colorA;
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 700);
+
+  // Particles
+  const coinEl = document.getElementById('coin');
+  const rect = coinEl.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+
+  for (let i = 0; i < 24; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 80 + Math.random() * 120;
+    p.style.setProperty('--tx', Math.cos(angle)*dist + 'px');
+    p.style.setProperty('--ty', Math.sin(angle)*dist + 'px');
+    p.style.setProperty('--dur', (0.8 + Math.random()*0.7) + 's');
+    p.style.width = p.style.height = (4 + Math.random()*6) + 'px';
+    p.style.background = Math.random() > 0.5 ? tier.colorA : tier.colorB;
+    p.style.left = cx + 'px';
+    p.style.top = cy + 'px';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 1600);
+  }
+}
+
+// ── STARS ──────────────────────────────────────────────────────────
+function makeStars() {
+  const container = document.getElementById('stars');
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2.5 + 0.5;
+    s.style.cssText = `
+      width:${size}px; height:${size}px;
+      left:${Math.random()*100}%;
+      top:${Math.random()*100}%;
+      --o:${0.1 + Math.random()*0.6};
+      --d:${2 + Math.random()*4}s;
+      animation-delay:${Math.random()*4}s;
+    `;
+    container.appendChild(s);
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────────────
+makeStars();
+update();
+
+// Refresh at midnight
+const now = new Date();
+const msToMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1) - now;
+setTimeout(() => { update(); setInterval(update, 86400000); }, msToMidnight);
+</script>
+</body>
+</html>
